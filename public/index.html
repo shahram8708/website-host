@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Host</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            text-align: center;
+        }
+
+        h1 {
+            color: #007bff;
+            margin: 0;
+            padding: 20px 0;
+            font-size: 36px;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .upload-section,
+        .files-section {
+            width: calc(50% - 20px);
+            margin-bottom: 40px;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            margin: auto;
+        }
+
+        .upload-section:hover,
+        .files-section:hover {
+            transform: translateY(-5px);
+        }
+
+        h2 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .upload-box {
+            padding: 40px;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            font-size: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            margin: auto;
+        }
+
+        .upload-box.active {
+            display: block;
+        }
+
+        .upload-box:hover {
+            border-color: #0056b3;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            font-size: 16px;
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .files-section ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .files-section ul li {
+            margin-bottom: 20px;
+        }
+
+        .files-section ul li a {
+            color: #007bff;
+            text-decoration: none;
+            transition: color 0.3s;
+            font-size: 18px;
+            display: inline-block;
+        }
+
+        .files-section ul li a:hover {
+            color: #0056b3;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Website Host Platform</h1>
+        </header>
+        <main>
+            <section class="upload-section">
+                <h2>Hold and Upload Your HTML File</h2>
+                <div class="upload-box" id="uploadBox" onclick="document.getElementById('fileInput').click()">
+                    <span id="fileName">Click to Upload</span>
+                </div>
+                <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+                    <input type="file" name="file" id="fileInput" style="display: none;" required>
+                    <button type="submit" id="submitButton">Upload</button>
+                </form>
+            </section>
+            <section class="files-section">
+                <h2>Uploaded File</h2>
+                <ul id="fileList"></ul>
+            </section>
+        </main>
+        <footer>
+            <p>&copy; 2024 Website Host Platform</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileList = JSON.parse(localStorage.getItem('fileList')) || [];
+
+            const uploadForm = document.getElementById('uploadForm');
+            const fileListElement = document.getElementById('fileList');
+            const uploadBox = document.getElementById('uploadBox');
+            const fileNameElement = document.getElementById('fileName');
+            const submitButton = document.getElementById('submitButton');
+            const allowedExtensions = ['html'];
+
+            uploadForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const fileInput = document.querySelector('input[type="file"]');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    alert('Please select a file.');
+                    return;
+                }
+
+                const fileExtension = getFileExtension(file.name);
+                if (!allowedExtensions.includes(fileExtension)) {
+                    alert('Please upload only HTML files.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const fileUrl = window.location.origin + '/' + data.fileId;
+                    fileList.push({ name: file.name, url: fileUrl });
+                    localStorage.setItem('fileList', JSON.stringify(fileList));
+                    displayFileList(fileList);
+                    uploadForm.reset();
+                    fileNameElement.textContent = 'Click to Upload';
+                    uploadBox.classList.remove('active');
+                    submitButton.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('There was a problem with your fetch operation:', error);
+                    alert('File upload failed.');
+                });
+            });
+
+            function displayFileList(files) {
+                fileListElement.innerHTML = '';
+                files.forEach(file => {
+                    const listItem = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = file.url;
+                    link.target = '_blank';
+                    link.textContent = file.name;
+                    listItem.appendChild(link);
+                    fileListElement.appendChild(listItem);
+                });
+            }
+
+            displayFileList(fileList);
+
+            document.getElementById('fileInput').addEventListener('change', function() {
+                const file = this.files[0];
+                fileNameElement.textContent = file.name;
+                uploadBox.classList.add('active');
+                submitButton.style.display = 'block';
+            });
+
+            function getFileExtension(filename) {
+                return filename.split('.').pop().toLowerCase();
+            }
+        });
+    </script>
+</body>
+</html>
